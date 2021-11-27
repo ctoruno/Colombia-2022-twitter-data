@@ -21,11 +21,8 @@
 rm(list=ls())
 
 # Required packages
-lapply(list("rtweet", "dplyr", "purrr", "readr"), 
+lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr"), 
        library, character.only = T)
-
-# Default option for kable
-options(knitr.table.format = "latex")
 
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -84,31 +81,35 @@ prev_batch_max.ls <- list("parties1" = batches.df$parties1_status_id[1],
                           "candidates2" = batches.df$candidates2_status_id[1])
 
 # Extracting Twitter info
-raw_tweets.ls
-example <- map2(queries.ls, prev_batch_max.ls, 
-                        function(query, tweet_id){
-                          data.df <- search_tweets(query, n = 1000, 
-                                                   retryonratelimit = T, 
-                                                   include_rts = F, lang = "es") 
-                          tweet_match <- sum(str_detect(data.df$status_id, prev_batch_max.ls[[1]]))
+raw_tweets.ls <- map2(queries.ls, prev_batch_max.ls, 
+                      function(query, tweet_id){
+                        
+                        print(paste0("Searching tweets for: ", query))
+                        data.df <- search_tweets(query, n = 4000, 
+                                                 retryonratelimit = T, 
+                                                 include_rts = F, lang = "es") 
+                        tweet_match <- sum(str_detect(data.df$status_id, tweet_id))
+                        print(paste0("Result for previous query match is: ", tweet_match))
+                        
+                        # If we haven't reached the latest tweet from the previous batch, then...
+                        while (tweet_match == 0) {
                           
-                          # If we haven't reached the latest tweet from the previous batch, then...
-                          while (tweet_match == 0) {
-                            
-                            max.tweet <- data.df %>%
-                              slice_max(created_at, n = 1) %>%
-                              pull(status_id)
-                            
-                            add_data.df <- search_tweets(query, n = 1000, 
-                                                         retryonratelimit = T, 
-                                                         include_rts = F, lang = "es",
-                                                         max_id = max.tweet)
-                            
-                            data.df <- bind_rows(data.df, add_data.df)
-                            tweet_match <- sum(str_detect(data.df$status_id, prev_batch_max.ls[[1]]))
-                          }
-                          return(data.df)
-                        })
+                          print(paste0("Procuring more tweets for: ", query))
+                          min.tweet <- data.df %>%
+                            slice_min(created_at, n = 1) %>%
+                            pull(status_id)
+                          add_data.df <- search_tweets(query, n = 2000, 
+                                                       retryonratelimit = T, 
+                                                       include_rts = F, lang = "es",
+                                                       max_id = min.tweet)
+                          
+                          data.df <- bind_rows(data.df, add_data.df) %>% 
+                            distinct(status_id, .keep_all = T)
+                          tweet_match <- sum(str_detect(data.df$status_id, tweet_id))
+                          print(paste0("Result for previous query is: ", tweet_match))
+                        }
+                        return(data.df)
+                      })
 
 # Updating batch file
 batches.df <- bind_rows(tribble(~Date, 
@@ -132,11 +133,13 @@ raw_tweets.df <- bind_rows(raw_tweets.ls) %>%
 write_as_csv(raw_tweets.df, 
              paste0("./Data/RawExtracts/_elections_tweets_col_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
-
   
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ##                3.  Cleaning extracted data                                                               ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+tweets.df <- raw_tweets.df %>%
+  (1:5, is_quote, favorite_count, retweet_count)
 
