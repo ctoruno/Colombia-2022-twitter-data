@@ -18,12 +18,16 @@
 
 # Working directory set (when working outside project)
 # setwd("/Users/carlostorunopaniagua/Documents/MA in Development Economics/Thesis/Data")
-rm(list=ls())
+# rm(list=ls())
 
 # Required packages
-lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr"), 
+lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
        library, character.only = T)
 
+# Notes:
+#         If you load the data image from the R project, you don't need to run lines section 1 of this script.
+#         Also, the image would automatically load the batch file (lines 66-71) or previous master data
+#         version (lines )
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -85,7 +89,7 @@ raw_tweets.ls <- map2(queries.ls, prev_batch_max.ls,
                       function(query, tweet_id){
                         
                         print(paste0("Searching tweets for: ", query))
-                        data.df <- search_tweets(query, n = 4000, 
+                        data.df <- search_tweets(query, n = 3500, 
                                                  retryonratelimit = T, 
                                                  include_rts = F, lang = "es") 
                         tweet_match <- sum(str_detect(data.df$status_id, tweet_id))
@@ -140,6 +144,19 @@ write_as_csv(raw_tweets.df,
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-tweets.df <- raw_tweets.df %>%
-  (1:5, is_quote, favorite_count, retweet_count)
+# Loading previous version of master data (if not loaded from data image)
+prev_master_filepath <- list.files("./Data/Master/",
+                               pattern = "csv$",
+                               full.names = T) %>% extract(which.max(file.mtime(.)))
+master_data.df <- read_twitter_csv(prev_master_filepath, unflatten = F) %>%
+  mutate(created_at = as.POSIXct(created_at))
 
+# Cleaning and adding recently extracted tweets to master dataset
+master_data.df <- master_data.df %>%
+  bind_rows(raw_tweets.df %>%
+              select(1:5, is_quote, favorite_count, retweet_count)) %>%
+  distinct(status_id, .keep_all = T)
+  
+# Saving master dataset version
+write_as_csv(master_data.df, 
+             paste0("./Data/Master/_master_data_", format(Sys.Date(), "%Y%m%d"), ".csv"))
