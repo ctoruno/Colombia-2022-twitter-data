@@ -26,8 +26,16 @@ lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"),
 
 # Notes:
 #         If you load the data image from the R project, you don't need to run lines section 1 of this script.
-#         Also, the image would automatically load the batch file (lines 66-71) or previous master data
-#         version (lines )
+#         Also, the image would automatically load the batch file (lines 75-80) or previous master data
+#         version (lines 155-160).
+#
+#         If updating tweets to data run as follows:
+#             0. Load project with data image
+#             1. Update the previous batch data: prev_batch_max.ls (lines 90-93)
+#             2. Extract tweets: raw_tweets.ls (lines 95-124)
+#             3. Update batch file: batches.df (lines 126-140)
+#             4. Save extracted data: raw_tweets.df (lines 142-146)
+#             5. Update master data: master_data.df (lines 162-170)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
