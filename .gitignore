@@ -37,3 +37,4 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+Data/RawExtracts/_elections_tweets_col_20211128.csv
