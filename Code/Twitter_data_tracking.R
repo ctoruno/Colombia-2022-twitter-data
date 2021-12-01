@@ -32,10 +32,10 @@ lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"),
 #         If updating tweets to data run as follows:
 #             0. Load project with data image
 #             1. Update the previous batch data: prev_batch_max.ls (lines 90-93)
-#             2. Extract tweets: raw_tweets.ls (lines 95-124)
-#             3. Update batch file: batches.df (lines 126-140)
-#             4. Save extracted data: raw_tweets.df (lines 142-146)
-#             5. Update master data: master_data.df (lines 162-170)
+#             2. Extract tweets: raw_tweets.ls (lines 95-162)
+#             3. Update batch file: batches.df (lines 164-178)
+#             4. Save extracted data: raw_tweets.df (lines 180-184)
+#             5. Update master data: master_data.df (lines 200-206)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -96,12 +96,28 @@ prev_batch_max.ls <- list("parties1" = batches.df$parties1_status_id[1],
 raw_tweets.ls <- map2(queries.ls, prev_batch_max.ls, 
                       function(query, tweet_id){
                         
+                        print("STARTING A NEW QUERY")
                         print(paste0("Searching tweets for: ", query))
+                        print(paste0("Last tweet ID is ", tweet_id))
+                        
+                        # Extracting tweets
+                        ntweets <- 0
                         data.df <- search_tweets(query, n = 3500, 
-                                                 retryonratelimit = T, 
-                                                 include_rts = F, lang = "es") 
+                                                 retryonratelimit = F, 
+                                                 include_rts = F, lang = "es")
+                        
+                        # Do we have the last tweet from the previous batch?
                         tweet_match <- sum(str_detect(data.df$status_id, tweet_id))
                         print(paste0("Result for previous query match is: ", tweet_match))
+                        
+                        # Checking extraction limit
+                        ntweets <- ntweets + 3500
+                        print(paste0("Extracted tweets have reached ", ntweets))
+                        if (ntweets > 10000) {
+                          print("Waiting 15 minutes for limit to reset")
+                          Sys.sleep(900)
+                          ntweets <- 0
+                        }
                         
                         # If we haven't reached the latest tweet from the previous batch, then...
                         while (tweet_match == 0) {
@@ -110,16 +126,38 @@ raw_tweets.ls <- map2(queries.ls, prev_batch_max.ls,
                           min.tweet <- data.df %>%
                             slice_min(created_at, n = 1) %>%
                             pull(status_id)
+                          print(paste0("Last tweet from previous extraction is: ", min.tweet))
+                          
                           add_data.df <- search_tweets(query, n = 2000, 
-                                                       retryonratelimit = T, 
+                                                       retryonratelimit = F, 
                                                        include_rts = F, lang = "es",
-                                                       max_id = min.tweet)
+                                                       max_id = min.tweet[1])
                           
                           data.df <- bind_rows(data.df, add_data.df) %>% 
                             distinct(status_id, .keep_all = T)
+                          
+                          # Do we have the last tweet from the previous batch?
                           tweet_match <- sum(str_detect(data.df$status_id, tweet_id))
                           print(paste0("Result for previous query is: ", tweet_match))
+                          
+                          # Checking extraction limit
+                          ntweets <- ntweets + 2000
+                          print(paste0("Extracted tweets have reached ", ntweets))
+                          if (ntweets > 10000) {
+                            print("Waiting 15 minutes for limit to reset")
+                            Sys.sleep(900)
+                            ntweets <- 0
+                          }
                         }
+                        
+                        # Forcing extraction to wait before next query if not done previously
+                        if (ntweets != 0) {
+                          print("Waiting 15 minutes for limit to reset")
+                          Sys.sleep(900)
+                        }
+                        
+                        print("Final dataset is:")
+                        print(head(data.df[2:4], 5))
                         return(data.df)
                       })
 
