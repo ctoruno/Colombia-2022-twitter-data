@@ -12,7 +12,6 @@
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ## Outline:                                                                                                 ----
-##                1.  
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -20,22 +19,25 @@
 # setwd("/Users/carlostorunopaniagua/Documents/MA in Development Economics/Thesis/Data")
 # rm(list=ls())
 
-# Required packages
-lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
-       library, character.only = T)
-
 # Notes:
 #         If you load the data image from the R project, you don't need to run lines section 1 of this script.
 #         Also, the image would automatically load the batch file (lines 75-80) or previous master data
 #         version (lines 155-160).
 #
 #         If updating tweets to data run as follows:
-#             0. Load project with data image
-#             1. Update the previous batch data: prev_batch_max.ls (lines 90-93)
-#             2. Extract tweets: raw_tweets.ls (lines 95-162)
-#             3. Update batch file: batches.df (lines 164-178)
-#             4. Save extracted data: raw_tweets.df (lines 180-184)
-#             5. Update master data: master_data.df (lines 200-206)
+#             0. Load project with data image and packages
+#             1. Update the previous batch data: prev_batch_max.ls (lines 91-94)
+#             2. Extract tweets: raw_tweets.ls (lines 96-163)
+#             3. Update batch file: batches.df (lines 165-179)
+#             4. Save extracted data: raw_tweets.df (lines 181-185)
+#             5. Update master data: master_data.df (lines 201-207)
+
+# Required packages
+lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
+       library, character.only = T)
+
+# Loading worspace
+load("./Data/extraction_workspace.RData")
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -64,7 +66,6 @@ candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez 
                            sep = " OR ")
 
 # Other important Twitter accounts
-
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -206,3 +207,6 @@ master_data.df <- master_data.df %>%
 # Saving master dataset version
 write_as_csv(master_data.df, 
              paste0("./Data/Master/_master_data_", format(Sys.Date(), "%Y%m%d"), ".csv"))
+
+# Saving workspace
+save.image(file = "./Data/extraction_workspace.RData")
