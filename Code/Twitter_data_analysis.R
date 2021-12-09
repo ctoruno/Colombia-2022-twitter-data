@@ -34,24 +34,7 @@ lapply(list("rtweet", "haven", "qdap", "tm", "syuzhet", "SnowballC", "wesanderso
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Extraction keywords (if not loaded from data image)
-parties_query1 <- paste("@MovimientoMAIS OR @PartidoVerdeCoL OR @CeDemocratico OR @NvLiberalismo",
-                        "@PartidoLiberal OR @ColombiaHumana_ OR @UP_Colombia OR @LaFuerzaDLaPaz",
-                        sep = " OR ")
 
-parties_query2 <- paste("@SoyRenaciente OR @PactoCol OR @PartidoMIRA OR @PoloDemocratico",
-                        "@compromisociu OR @PAC_Colombia OR @partidodelaucol OR @PCambioRadical",
-                        sep = " OR ")
-
-candidates_query1 <- paste("@petrogustavo OR @FranciaMarquezM OR @RoyBarreras OR @urianaguariyu",
-                           "@velascoluisf OR @CamiloRomero OR @ingrodolfohdez OR @JERobledo",
-                           "@CarlosAmayaR OR @sergio_fajardo OR @agaviriau OR @juanmanuelgalan",
-                           sep = " OR ")
-
-candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez OR @JCecheverryCol",
-                           "@AlejandroChar OR @DilianFrancisca OR @davidbarguil OR @JohnMiltonR_",
-                           "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
-                           sep = " OR ")
 
 # Loading previous version of master data (if not loaded from data image)
 prev_master_filepath <- list.files("./Data/Master/",
@@ -61,11 +44,15 @@ master_data.df <- read_twitter_csv(prev_master_filepath, unflatten = F) %>%
   mutate(created_at = as.POSIXct(created_at))
 
 
+
+
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ##                1.  Frequency Analysis                                                                    ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 # Creating a VCorpus
 tweets.corpus <- master_data.df %>%

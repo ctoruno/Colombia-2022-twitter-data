@@ -7,7 +7,7 @@
 ##
 ## Creation date:     December 5th, 2021
 ##
-## This version:      December 5rd, 2021
+## This version:      December 5th, 2021
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -39,10 +39,11 @@ lapply(list("rtweet", "haven", "qdap", "tm", "syuzhet", "SnowballC", "wesanderso
 header <- dashboardHeader(
   title = "Colombia 2022: A Twitter companion",
   dropdownMenu(type = "notifications",
+               icon = icon("exclamation-triangle"),
                notificationItem(
-                 text = paste0("Last successful Twitter extraction: ", batches.df$Date))
+                 text = paste0("Last successful Twitter extraction: ", batches.df$Date[1]),
+                 icon("calendar-alt"))
                )
-               
 )
 
 # Dashboard sidebar
@@ -67,21 +68,25 @@ sidebar <- dashboardSidebar(
 
 # Dashboard body
 body <- dashboardBody(
-  fluidRow(
-    box(title = "Filters", 
-        width = 4,
-        multiInput(
-          inputId = "selected_candidates",
-          label = "Candidates:", 
-          choices = NULL,
-          choiceNames = lapply(seq_along(countries), 
-                               function(i) tagList(tags$img(src = flags[i],
-                                                            width = 20, 
-                                                            height = 15), countries[i])),
-          choiceValues = countries),
-        dateRangeInput("date_range", label = h3("Date range"))),
-    box(wordcloud2Output("wordcloud"),
-        width = 8)
+  tabItems(
+
+    # Wordclouds
+    tabItem(
+      tabName = "wordclouds",
+      fluidRow(
+        box(title = "Filters",
+            width = 4,
+            multiInput(
+              inputId = "selected_candidates",
+              label = "Candidates:",
+              choices = NULL,
+              choiceNames = as.list(names(candidates)),
+              choiceValues = candidates),
+            dateRangeInput("date_range", label = h3("Date range"))),
+        box(wordcloud2Output("wordcloud"),
+            width = 8)
+      )
+    )
   )
 )
 
@@ -97,37 +102,24 @@ ui <- dashboardPage(header, sidebar, body,
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 set.seed(31478)
-candidates <- list("Gustavo Petro" = "@petrogustavo", 
-                   "Francia Márquez" = "@FranciaMarquezM",
-                   "Roy Leonardo Barreras" = "@RoyBarreras", 
-                   "Arelis Uriana" = "@urianaguariyu",
-                   "Luis Fernando Velasco" = "@velascoluisf",
-                   "Camilo Romero" = "@CamiloRomero",
-                   "Rodolfo Hernández" = "@ingrodolfohdez",
-                   "Jorge Enrique Robledo" = "@JERobledo",
-                   "Carlos Amaya" = "@CarlosAmayaR",
-                   "Sergio Fajardo" = "@sergio_fajardo",
-                   "Alejandro Gaviria" = "@agaviriau", 
-                   "Juan Manuel Galán" = "@juanmanuelgalan",
-                   "Juan Fernando Cristo" = "@CristoBustos",
-                   "Enrique Peñalosa" = "@EnriquePenalosa",
-                   "Federico Gutiérrez" = "@FicoGutierrez",
-                   "Juan Carlos Echeverry" = "@JCecheverryCol",
-                   "Alejandro Char" = "@AlejandroChar",
-                   "Dilian Francisca Toro" = "@DilianFrancisca",
-                   "David Barguil" = "@davidbarguil",
-                   "John Milton Rodríguez" = "@JohnMiltonR_",
-                   "Aydeé Lizarazo" = "@aydeelizarazoc",
-                   "Óscar Iván Zuluaga" = "@OIZuluaga",
-                   "Luis Pérez"= "@Luis_Perez_G",
-                   "Eduardo Verano"= "@veranodelarosa")
 
 server <- function(input, output){
   
-  output$wordcloud <- wordcloud2(filtered_data[1:200,], size = 0.9,
-                                 color = rep_len(c("DarkRed", "CornflowerBlue", "DarkOrange"),
-                                                 nrow(filtered_data[1:200,])),
-                                 ellipticity = 0.2, shuffle = F)
+  # Loading master data
+  master_filepath <- list.files("./Data/Master",
+                                     pattern = "csv$",
+                                     full.names = T) %>% extract(which.max(file.mtime(.)))
+  master_data.df <- reactiveFileReader(
+    intervalMillis = 10800,
+    session = NULL,
+    filePath = master_filepath,
+    readFunc = read_twitter_csv) %>%
+    mutate(created_at = as.POSIXct(created_at))
+  
+  # output$wordcloud <- wordcloud2(filtered_data[1:200,], size = 0.9,
+  #                                color = rep_len(c("DarkRed", "CornflowerBlue", "DarkOrange"),
+  #                                                nrow(filtered_data[1:200,])),
+  #                                ellipticity = 0.2, shuffle = F)
 }
 
 

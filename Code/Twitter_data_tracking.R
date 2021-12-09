@@ -20,20 +20,10 @@
 # rm(list=ls())
 
 # Notes:
-#         If you load the data image from the R project, you don't need to run lines section 1 of this script.
-#         Also, the image would automatically load the batch file (lines 75-80) or previous master data
-#         version (lines 155-160).
-#
-#         If updating tweets to data run as follows:
-#             0. Load project with data image and packages
-#             1. Update the previous batch data: prev_batch_max.ls (lines 91-94)
-#             2. Extract tweets: raw_tweets.ls (lines 96-163)
-#             3. Update batch file: batches.df (lines 165-179)
-#             4. Save extracted data: raw_tweets.df (lines 181-185)
-#             5. Update master data: master_data.df (lines 201-207)
+#         
 
 # Required packages
-lapply(list("rtweet", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
+lapply(list("rtweet", "glue", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
        library, character.only = T)
 
 # Loading worspace
@@ -64,6 +54,31 @@ candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez 
                            "@AlejandroChar OR @DilianFrancisca OR @davidbarguil OR @JohnMiltonR_",
                            "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
                            sep = " OR ")
+
+candidates <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
+                   "Francia Márquez" = c("@FranciaMarquezM", "francia"),
+                   "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
+                   "Arelis Uriana" = c("@urianaguariyu", "arelis"),
+                   "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
+                   "Camilo Romero" = c("@CamiloRomero", "camilo"),
+                   "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
+                   "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
+                   "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
+                   "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
+                   "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
+                   "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
+                   "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
+                   "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
+                   "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
+                   "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
+                   "Alejandro Char" = c("@AlejandroChar", "char"),
+                   "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
+                   "David Barguil" = c("@davidbarguil", "barguil"),
+                   "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
+                   "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
+                   "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
+                   "Luis Pérez"= c("@Luis_Perez_G", "perez"),
+                   "Eduardo Verano"= c("@veranodelarosa", "verano"))
 
 # Other important Twitter accounts
 
@@ -201,7 +216,17 @@ master_data.df <- read_twitter_csv(prev_master_filepath, unflatten = F) %>%
 # Cleaning and adding recently extracted tweets to master dataset
 master_data.df <- master_data.df %>%
   bind_rows(raw_tweets.df %>%
-              select(1:5, is_quote, favorite_count, retweet_count)) %>%
+              select(1:5, is_quote, favorite_count, retweet_count) %>%
+              
+              # Creating filters per candidate
+              bind_cols(map2_dfc(candidates %>%  map_chr(1),
+                                 candidates %>%  map_chr(2),
+                                 function(tag, name) {
+                                   var_name <- paste0("filter_", name)
+                                   master_data.df %>%
+                                     mutate(!!var_name := if_else(str_detect(text, tag), 1, 0)) %>%
+                                     select(!!var_name)
+                                 }))) %>%
   distinct(status_id, .keep_all = T)
   
 # Saving master dataset version
