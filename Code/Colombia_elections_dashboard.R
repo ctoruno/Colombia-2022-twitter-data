@@ -31,6 +31,15 @@ lapply(list("rtweet", "haven", "qdap", "tm", "syuzhet", "SnowballC", "wesanderso
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
+##                0.  Loading data                                                                          ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Loading Twitter data
+load("./Data/twitter_data4dash.RData")
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
 ##                1.  Dashboard UI                                                                          ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -80,9 +89,12 @@ body <- dashboardBody(
               inputId = "selected_candidates",
               label = "Candidates:",
               choices = NULL,
-              choiceNames = as.list(names(candidates)),
-              choiceValues = candidates),
-            dateRangeInput("date_range", label = h3("Date range"))),
+              choiceNames = as.list(names(candidates.ls)),
+              choiceValues = candidates.ls %>%  map_chr(2)),
+            dateRangeInput("date_range",
+                           label = h3("Date range"),
+                           start = "2021-11-17",
+                           end = "2021-12-08")),
         box(wordcloud2Output("wordcloud"),
             width = 8)
       )
@@ -105,23 +117,53 @@ set.seed(31478)
 
 server <- function(input, output){
   
-  # Loading master data
-  master_filepath <- list.files("./Data/Master",
-                                     pattern = "csv$",
-                                     full.names = T) %>% extract(which.max(file.mtime(.)))
-  master_data.df <- reactiveFileReader(
-    intervalMillis = 10800,
-    session = NULL,
-    filePath = master_filepath,
-    readFunc = read_twitter_csv) %>%
-    mutate(created_at = as.POSIXct(created_at))
-  
-  # output$wordcloud <- wordcloud2(filtered_data[1:200,], size = 0.9,
-  #                                color = rep_len(c("DarkRed", "CornflowerBlue", "DarkOrange"),
-  #                                                nrow(filtered_data[1:200,])),
-  #                                ellipticity = 0.2, shuffle = F)
+  # Generating wordcloud
+  output$wordcloud <- renderWordcloud2({
+    
+    # Defining filtered data
+    filtered_data <- master_data.df %>%
+      filter(str_detect(.data$text, regex(paste(.env$input$selected_candidates, collapse = "|"))) &
+               between(as.Date(.data$created_at), .env$input$date_range[1], .env$input$date_range[2]))
+    
+    # Tokenizing text and removing stop words
+    twitter_tokenized.df <- filtered_data %>%
+      mutate(text = str_replace_all(tolower(text), c("á" = "a", "é" = "e", "í" = "i",
+                                                     "ó" = "o", "ú|ü" = "u"))) %>%
+      select(1:5) %>%
+      mutate(tweet_id = row_number()) %>%
+      unnest_tokens(words, text, token = "tweets", strip_url = T) %>%
+      anti_join(data.frame(words = stopwords("es")) %>%
+                  mutate(words = str_replace_all(.data$words,
+                                                 c("á" = "a", "é" = "e", "í" = "i", "ó" = "o", "ú|ü" = "u"))))
+    
+    # Removing custom stop words
+    twitter_tokenized.df <- twitter_tokenized.df %>%      # we remove stopwords in the top-150
+      anti_join(tribble(~words, "ahora", "hacer", "hace", "puede", "mismo", "tan", "señor", "ud", "siempre",
+                        "menos","dice", "debe", "ver", "hoy", "sabe", "van", "quiere", "creo", "ustedes",
+                        "decir", "pues", "cabal", "vamos", "nunca", "claro", "ahi", "jajaja", "jajajaja",
+                        "entonces", "gran", "vez", "da", "toda", "d", "favor", "parte", "quieren", "cada",
+                        "hizo", "hecho", "tener", "dijo", "aqui", "cree", "tal", "parece", "hacen",
+                        "despues", "que", "usted", "solo", "ser", "asi", "va", "años", "habla", "tipo",
+                        "misma", "cosas", "5", "necesita", "alguien", "todas", "aun", "sino", "cosa",
+                        "x", "q"))
+    # check <- twitter_tokenized.df %>%
+    #   count(words) %>%
+    #   arrange(desc(n))  # just to check remaining stopwords
+    
+    # Creating word counts
+    wcount_raw.df <- twitter_tokenized.df %>% count(words) %>% arrange(desc(n))
+    keywords <- paste(candidates_query1, candidates_query2, parties_query1, parties_query2, sep = " ") %>%
+      str_replace_all(" OR ", "|")
+    wcount_flt.df <- wcount_raw.df %>%    # Removing keywords used to extract tweets
+      filter(!(str_detect(words, regex(keywords, ignore_case = T))))
+    
+    # Generating wordcloud
+    wordcloud2(wcount_flt.df[1:200,], size = 0.9,
+               color = rep_len(c("DarkRed", "CornflowerBlue", "DarkOrange"),
+                               nrow(wcount_flt.df[1:200,])),
+               ellipticity = 0.2, shuffle = F)
+  })
 }
-
 
 
 

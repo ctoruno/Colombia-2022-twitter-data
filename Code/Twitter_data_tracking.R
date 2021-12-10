@@ -55,30 +55,30 @@ candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez 
                            "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
                            sep = " OR ")
 
-candidates <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
-                   "Francia Márquez" = c("@FranciaMarquezM", "francia"),
-                   "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
-                   "Arelis Uriana" = c("@urianaguariyu", "arelis"),
-                   "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
-                   "Camilo Romero" = c("@CamiloRomero", "camilo"),
-                   "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
-                   "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
-                   "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
-                   "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
-                   "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
-                   "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
-                   "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
-                   "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
-                   "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
-                   "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
-                   "Alejandro Char" = c("@AlejandroChar", "char"),
-                   "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
-                   "David Barguil" = c("@davidbarguil", "barguil"),
-                   "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
-                   "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
-                   "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
-                   "Luis Pérez"= c("@Luis_Perez_G", "perez"),
-                   "Eduardo Verano"= c("@veranodelarosa", "verano"))
+candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
+                      "Francia Márquez" = c("@FranciaMarquezM", "francia"),
+                      "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
+                      "Arelis Uriana" = c("@urianaguariyu", "arelis"),
+                      "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
+                      "Camilo Romero" = c("@CamiloRomero", "camilo"),
+                      "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
+                      "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
+                      "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
+                      "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
+                      "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
+                      "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
+                      "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
+                      "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
+                      "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
+                      "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
+                      "Alejandro Char" = c("@AlejandroChar", "char"),
+                      "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
+                      "David Barguil" = c("@davidbarguil", "barguil"),
+                      "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
+                      "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
+                      "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
+                      "Luis Pérez"= c("@Luis_Perez_G", "perez"),
+                      "Eduardo Verano"= c("@veranodelarosa", "verano"))
 
 # Other important Twitter accounts
 
@@ -219,8 +219,8 @@ master_data.df <- master_data.df %>%
               select(1:5, is_quote, favorite_count, retweet_count) %>%
               
               # Creating filters per candidate
-              bind_cols(map2_dfc(candidates %>%  map_chr(1),
-                                 candidates %>%  map_chr(2),
+              bind_cols(map2_dfc(candidates.ls %>%  map_chr(1),
+                                 candidates.ls %>%  map_chr(2),
                                  function(tag, name) {
                                    var_name <- paste0("filter_", name)
                                    master_data.df %>%
@@ -233,5 +233,9 @@ master_data.df <- master_data.df %>%
 write_as_csv(master_data.df, 
              paste0("./Data/Master/_master_data_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
-# Saving workspace
+# Saving workspace and master
 save.image(file = "./Data/extraction_workspace.RData")
+save(batches.df, candidates.ls, master_data.df, 
+     parties_query1, parties_query2, candidates_query1, candidates_query2,
+     file = "./Data/twitter_data4dash.RData")
+
