@@ -82,6 +82,7 @@ candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"),
 
 # Other important Twitter accounts
 
+
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ##                2.  Applying extraction                                                                   ----
@@ -223,7 +224,7 @@ master_data.df <- master_data.df %>%
                                  candidates.ls %>%  map_chr(2),
                                  function(tag, name) {
                                    var_name <- paste0("filter_", name)
-                                   master_data.df %>%
+                                   raw_tweets.df %>%
                                      mutate(!!var_name := if_else(str_detect(text, tag), 1, 0)) %>%
                                      select(!!var_name)
                                  }))) %>%
@@ -233,7 +234,7 @@ master_data.df <- master_data.df %>%
 write_as_csv(master_data.df, 
              paste0("./Data/Master/_master_data_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
-# Saving workspace and master
+# Saving extraction and master data
 save.image(file = "./Data/extraction_workspace.RData")
 save(batches.df, candidates.ls, master_data.df, 
      parties_query1, parties_query2, candidates_query1, candidates_query2,
