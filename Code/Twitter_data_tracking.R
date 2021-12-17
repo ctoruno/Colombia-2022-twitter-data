@@ -15,7 +15,7 @@
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Working directory set (when working outside project)
+# Working directory (when working outside project)
 # setwd("/Users/carlostorunopaniagua/Documents/GitHub/Political-Observatory-Colombia/")
 # rm(list=ls())
 
@@ -29,59 +29,64 @@ lapply(list("rtweet", "glue", "dplyr", "purrr", "readr", "stringr", "magrittr"),
 # Loading worspace
 load("./Data/extraction_workspace.RData")
 
+# Successful loading?
+success <- TRUE
+
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ##                1.  Defining extraction algorithm                                                         ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Political parties official twitter accounts
-parties_query1 <- paste("@MovimientoMAIS OR @PartidoVerdeCoL OR @CeDemocratico OR @NvLiberalismo",
-                        "@PartidoLiberal OR @ColombiaHumana_ OR @UP_Colombia OR @LaFuerzaDLaPaz",
-                        sep = " OR ")
-
-parties_query2 <- paste("@SoyRenaciente OR @PactoCol OR @PartidoMIRA OR @PoloDemocratico",
-                        "@compromisociu OR @PAC_Colombia OR @partidodelaucol OR @PCambioRadical",
-                        sep = " OR ")
-
-# Precandidates official twitter accounts
-candidates_query1 <- paste("@petrogustavo OR @FranciaMarquezM OR @RoyBarreras OR @urianaguariyu",
-                           "@velascoluisf OR @CamiloRomero OR @ingrodolfohdez OR @JERobledo",
-                           "@CarlosAmayaR OR @sergio_fajardo OR @agaviriau OR @juanmanuelgalan",
-                           sep = " OR ")
-
-candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez OR @JCecheverryCol",
-                           "@AlejandroChar OR @DilianFrancisca OR @davidbarguil OR @JohnMiltonR_",
-                           "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
-                           sep = " OR ")
-
-candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
-                      "Francia Márquez" = c("@FranciaMarquezM", "francia"),
-                      "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
-                      "Arelis Uriana" = c("@urianaguariyu", "arelis"),
-                      "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
-                      "Camilo Romero" = c("@CamiloRomero", "camilo"),
-                      "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
-                      "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
-                      "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
-                      "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
-                      "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
-                      "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
-                      "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
-                      "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
-                      "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
-                      "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
-                      "Alejandro Char" = c("@AlejandroChar", "char"),
-                      "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
-                      "David Barguil" = c("@davidbarguil", "barguil"),
-                      "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
-                      "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
-                      "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
-                      "Luis Pérez"= c("@Luis_Perez_G", "perez"),
-                      "Eduardo Verano"= c("@veranodelarosa", "verano"))
-
-# Other important Twitter accounts
-
+if (success == FALSE){
+  # Political parties official twitter accounts
+  parties_query1 <- paste("@MovimientoMAIS OR @PartidoVerdeCoL OR @CeDemocratico OR @NvLiberalismo",
+                          "@PartidoLiberal OR @ColombiaHumana_ OR @UP_Colombia OR @LaFuerzaDLaPaz",
+                          sep = " OR ")
+  
+  parties_query2 <- paste("@SoyRenaciente OR @PactoCol OR @PartidoMIRA OR @PoloDemocratico",
+                          "@compromisociu OR @PAC_Colombia OR @partidodelaucol OR @PCambioRadical",
+                          sep = " OR ")
+  
+  # Precandidates official twitter accounts
+  candidates_query1 <- paste("@petrogustavo OR @FranciaMarquezM OR @RoyBarreras OR @urianaguariyu",
+                             "@velascoluisf OR @CamiloRomero OR @ingrodolfohdez OR @JERobledo",
+                             "@CarlosAmayaR OR @sergio_fajardo OR @agaviriau OR @juanmanuelgalan",
+                             sep = " OR ")
+  
+  candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez OR @JCecheverryCol",
+                             "@AlejandroChar OR @DilianFrancisca OR @davidbarguil OR @JohnMiltonR_",
+                             "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
+                             sep = " OR ")
+  
+  candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
+                        "Francia Márquez" = c("@FranciaMarquezM", "francia"),
+                        "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
+                        "Arelis Uriana" = c("@urianaguariyu", "arelis"),
+                        "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
+                        "Camilo Romero" = c("@CamiloRomero", "camilo"),
+                        "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
+                        "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
+                        "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
+                        "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
+                        "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
+                        "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
+                        "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
+                        "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
+                        "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
+                        "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
+                        "Alejandro Char" = c("@AlejandroChar", "char"),
+                        "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
+                        "David Barguil" = c("@davidbarguil", "barguil"),
+                        "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
+                        "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
+                        "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
+                        "Luis Pérez"= c("@Luis_Perez_G", "perez"),
+                        "Eduardo Verano"= c("@veranodelarosa", "verano"))
+  
+  # Other important Twitter accounts
+  
+}
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -89,21 +94,26 @@ candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"),
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Retrieving past batches info
-batches.df <- read_delim("./Data/batch_log.csv", delim = ";",
-                         col_types = cols("parties1_status_id" = "c",
-                                          "parties2_status_id" = "c",
-                                          "candidates1_status_id" = "c",
-                                          "candidates2_status_id" = "c"))
-      # I specify col_types for the status_id columns because readr classifies them as double instead of
-      # character by default. As a huge number, it gives a scientific notation which can give troubles
-      # when matching the identifier.
+if (success == FALSE){
+  
+  # Retrieving past batches info
+  batches.df <- read_delim("./Data/batch_log.csv", delim = ";",
+                           col_types = cols("parties1_status_id" = "c",
+                                            "parties2_status_id" = "c",
+                                            "candidates1_status_id" = "c",
+                                            "candidates2_status_id" = "c"))
+  # I specify col_types for the status_id columns because readr classifies them as double instead of
+  # character by default. As a huge number, it gives a scientific notation which can give troubles
+  # when matching the identifier.
+  
+  # Defining input queries
+  queries.ls <- list("parties1" = parties_query1,
+                     "parties2" = parties_query2,
+                     "candidates1" = candidates_query1,
+                     "candidates2" = candidates_query2)
+}
 
-# Defining input queries and previous batch latest tweet
-queries.ls <- list("parties1" = parties_query1,
-                   "parties2" = parties_query2,
-                   "candidates1" = candidates_query1,
-                   "candidates2" = candidates_query2)
+# Retrieving previous batch latest tweet
 prev_batch_max.ls <- list("parties1" = batches.df$parties1_created_at[1],
                           "parties2" = batches.df$parties2_created_at[1],
                           "candidates1" = batches.df$candidates1_created_at[1],
@@ -183,7 +193,8 @@ batches.df <- bind_rows(tribble(~Date,
                                 Sys.Date()) %>% bind_cols(imap(raw_tweets.ls, 
                                                                function(query, oname){
                                                                  value <- query %>%
-                                                                   slice_max(created_at, n = 1) %>%
+                                                                   slice_max(created_at, n = 1,
+                                                                             with_ties = F) %>%
                                                                    select(created_at, status_id)
                                                                  names(value) <- paste(oname, names(value),
                                                                                        sep = "_")
@@ -207,12 +218,14 @@ write_as_csv(raw_tweets.df,
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Loading previous version of master data (if not loaded from data image)
-prev_master_filepath <- list.files("./Data/Master/",
-                               pattern = "csv$",
-                               full.names = T) %>% extract(which.max(file.mtime(.)))
-master_data.df <- read_twitter_csv(prev_master_filepath, unflatten = F) %>%
-  mutate(created_at = as.POSIXct(created_at))
+if (success == FALSE){
+  # Loading previous version of master data (if not loaded from data image)
+  prev_master_filepath <- list.files("./Data/Master/",
+                                     pattern = "csv$",
+                                     full.names = T) %>% extract(which.max(file.mtime(.)))
+  master_data.df <- read_twitter_csv(prev_master_filepath, unflatten = F) %>%
+    mutate(created_at = as.POSIXct(created_at)) 
+}
 
 # Cleaning and adding recently extracted tweets to master dataset
 master_data.df <- master_data.df %>%
