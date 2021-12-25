@@ -59,30 +59,30 @@ if (success == FALSE){
                              "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
                              sep = " OR ")
   
-  candidates.ls <- list("Gustavo Petro" = c("@petrogustavo", "petro"), 
-                        "Francia Márquez" = c("@FranciaMarquezM", "francia"),
-                        "Roy Leonardo Barreras" = c("@RoyBarreras", "roy"), 
-                        "Arelis Uriana" = c("@urianaguariyu", "arelis"),
-                        "Luis Fernando Velasco" = c("@velascoluisf", "velasco"),
-                        "Camilo Romero" = c("@CamiloRomero", "camilo"),
-                        "Rodolfo Hernández" = c("@ingrodolfohdez", "hernandez"),
-                        "Jorge Enrique Robledo" = c("@JERobledo", "robledo"),
-                        "Carlos Amaya" = c("@CarlosAmayaR", "amaya"), 
-                        "Sergio Fajardo" = c("@sergio_fajardo", "fajardo"),
-                        "Alejandro Gaviria" = c("@agaviriau", "gaviria"),
-                        "Juan Manuel Galán" = c("@juanmanuelgalan", "galan"),
-                        "Juan Fernando Cristo" = c("@CristoBustos", "cristo"),
-                        "Enrique Peñalosa" = c("@EnriquePenalosa", "penalosa"),
-                        "Federico Gutiérrez" = c("@FicoGutierrez", "federico"),
-                        "Juan Carlos Echeverry" = c("@JCecheverryCol", "echeverry"),
-                        "Alejandro Char" = c("@AlejandroChar", "char"),
-                        "Dilian Francisca Toro" = c("@DilianFrancisca", "toro"),
-                        "David Barguil" = c("@davidbarguil", "barguil"),
-                        "John Milton Rodríguez" = c("@JohnMiltonR_", "milton"),
-                        "Aydeé Lizarazo" = c("@aydeelizarazoc", "lizarazo"),
-                        "Óscar Iván Zuluaga" = c("@OIZuluaga", "zuluaga"),
-                        "Luis Pérez"= c("@Luis_Perez_G", "perez"),
-                        "Eduardo Verano"= c("@veranodelarosa", "verano"))
+  candidates.ls <- list( "Amaya, Carlos" = c("@CarlosAmayaR", "amaya"),
+                         "Barguil, David" = c("@davidbarguil", "barguil"),
+                         "Barreras, Roy Leonardo" = c("@RoyBarreras", "roy"), 
+                         "Char, Alejandro" = c("@AlejandroChar", "char"),
+                         "Cristo, Juan Fernando" = c("@CristoBustos", "cristo"),
+                         "Echeverry, Juan Carlos" = c("@JCecheverryCol", "echeverry"),
+                         "Fajardo, Sergio" = c("@sergio_fajardo", "fajardo"),
+                         "Galán, Juan Manuel" = c("@juanmanuelgalan", "galan"),
+                         "Gaviria, Alejandro" = c("@agaviriau", "gaviria"),
+                         "Gutiérrez, Federico" = c("@FicoGutierrez", "federico"),
+                         "Hernández, Rodolfo" = c("@ingrodolfohdez", "hernandez"),
+                         "Lizarazo, Aydeé" = c("@aydeelizarazoc", "lizarazo"),
+                         "Márquez, Francia" = c("@FranciaMarquezM", "francia"),
+                         "Peñalosa, Enrique" = c("@EnriquePenalosa", "penalosa"),
+                         "Pérez, Luis"= c("@Luis_Perez_G", "perez"),
+                         "Petro, Gustavo" = c("@petrogustavo", "petro"), 
+                         "Robledo, Jorge Enrique" = c("@JERobledo", "robledo"),
+                         "Rodríguez, John Milton" = c("@JohnMiltonR_", "milton"),
+                         "Romero, Camilo" = c("@CamiloRomero", "camilo"),
+                         "Toro, Dilian Francisca" = c("@DilianFrancisca", "toro"),
+                         "Uriana, Arelis" = c("@urianaguariyu", "arelis"),
+                         "Velasco, Luis Fernando" = c("@velascoluisf", "velasco"),
+                         "Verano, Eduardo"= c("@veranodelarosa", "verano"),
+                         "Zuluaga, Óscar Iván" = c("@OIZuluaga", "zuluaga"))
   
   # Other important Twitter accounts
   
@@ -211,7 +211,28 @@ raw_tweets.df <- bind_rows(raw_tweets.ls) %>%
 write_as_csv(raw_tweets.df, 
              paste0("./Data/RawExtracts/_elections_tweets_col_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
-  
+# Getting timelines
+timelines <- FALSE
+if (timelines == TRUE){
+  timelines.df <- map_dfr(list(candidates.ls[1:6] %>% map_chr(1),
+                               candidates.ls[7:12] %>% map_chr(1),
+                               candidates.ls[13:18] %>% map_chr(1),
+                               candidates.ls[19:24] %>% map_chr(1)),
+                          function(batch) {
+                            Sys.sleep(900)
+                            map_dfr(batch,
+                                    function(candidate){
+                                      get_timeline(user = candidate, n = 2800)
+                                    })
+                          }) %>%
+    select(1:5, is_quote, favorite_count, retweet_count) %>%
+    filter(created_at >= as.POSIXct("2021-06-01"))
+}
+
+# Saving timelines
+write_as_csv(timelines.df, 
+             paste0("./Data/Timelines/_timeline_", format(Sys.Date(), "%Y%m%d"), ".csv"))
+
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
 ##                3.  Cleaning extracted data                                                               ----
@@ -249,7 +270,6 @@ write_as_csv(master_data.df,
 
 # Saving extraction and master data
 save.image(file = "./Data/extraction_workspace.RData")
-save(batches.df, candidates.ls, master_data.df, 
+save(batches.df, candidates.ls, master_data.df, timelines.df,
      parties_query1, parties_query2, candidates_query1, candidates_query2,
-     file = "./Data/twitter_data4dash.RData")
-
+     file = "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/twitter_data4dash.RData")
