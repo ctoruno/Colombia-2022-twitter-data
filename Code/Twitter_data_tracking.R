@@ -83,14 +83,11 @@ if (success == FALSE){
                          "Velasco, Luis Fernando" = c("@velascoluisf", "velasco"),
                          "Verano, Eduardo"= c("@veranodelarosa", "verano"),
                          "Zuluaga, Óscar Iván" = c("@OIZuluaga", "zuluaga"))
-  
-  # Other important Twitter accounts
-  
 }
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                2.  Applying extraction                                                                   ----
+##                2.  Applying extraction (master)                                                          ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -211,31 +208,69 @@ raw_tweets.df <- bind_rows(raw_tweets.ls) %>%
 write_as_csv(raw_tweets.df, 
              paste0("./Data/RawExtracts/_elections_tweets_col_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                3.  Applying extraction (timelines)                                                       ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 # Getting timelines
-timelines <- FALSE
-if (timelines == TRUE){
-  timelines.df <- map_dfr(list(candidates.ls[1:6] %>% map_chr(1),
-                               candidates.ls[7:12] %>% map_chr(1),
-                               candidates.ls[13:18] %>% map_chr(1),
-                               candidates.ls[19:24] %>% map_chr(1)),
-                          function(batch) {
-                            Sys.sleep(900)
-                            map_dfr(batch,
-                                    function(candidate){
-                                      get_timeline(user = candidate, n = 2800)
-                                    })
-                          }) %>%
-    select(1:5, is_quote, favorite_count, retweet_count) %>%
-    filter(created_at >= as.POSIXct("2021-06-01"))
-}
+print("Waiting 15 minutes for limit to reset...")
+Sys.sleep(900)
+raw_timelines.df <- map_dfr(list(candidates.ls[1:6] %>% map_chr(1),
+                                 candidates.ls[7:12] %>% map_chr(1),
+                                 candidates.ls[13:18] %>% map_chr(1),
+                                 candidates.ls[19:24] %>% map_chr(1)),
+                            function(batch) {  # Search is splitted in 4 diff batches due to extraction limit
+                              map_dfr(batch,
+                                      function(candidate){
+                                        
+                                        # Extracting user timeline
+                                        series <- get_timeline(user = candidate, n = 75)
+                                        
+                                        # Checking what was the last extracted tweet from user
+                                        last_tweet <- timelines.df %>%
+                                          group_by(screen_name) %>%
+                                          filter(screen_name == str_sub(candidate, 2)) %>%
+                                          slice_max(created_at, n = 1, with_ties = F)
+                                        
+                                        # Is last tweet within batch?
+                                        reached <- min(series$created_at) < last_tweet$created_at
+                                        print(paste0("Was last tweet reached? ", reached))
+                                        
+                                        while (reached == F) {   
+                                          
+                                          # If not, get an additional timeline
+                                          series <- series %>%
+                                            bind_rows(
+                                              get_timeline(user = candidate, 
+                                                           n = 75, 
+                                                           max_id = last_tweet$status_id) 
+                                            )
+                                          
+                                          # Is last tweet within batch?
+                                          reached <- min(series$created_at) < last_tweet$created_at
+                                          print(paste0("Was last tweet reached? ", reached))
+                                        }
+                                          return(series)
+                                      })
+                            }) %>%
+  select(1:5, is_quote, favorite_count, retweet_count)
+
+# Adding raw extraction to timelines.df
+timelines.df <- timelines.df %>%
+  bind_rows(raw_timelines.df) %>%
+  distinct(status_id, .keep_all = T)
 
 # Saving timelines
 write_as_csv(timelines.df, 
              paste0("./Data/Timelines/_timeline_", format(Sys.Date(), "%Y%m%d"), ".csv"))
 
+
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                3.  Cleaning extracted data                                                               ----
+##                4.  Cleaning extracted data                                                               ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
