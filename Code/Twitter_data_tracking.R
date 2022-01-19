@@ -256,7 +256,7 @@ raw_timelines.df <- map_dfr(list(candidates.ls[1:6] %>% map_chr(1),
                                           return(series)
                                       })
                             }) %>%
-  select(1:5, is_quote, favorite_count, retweet_count)
+  select(1:5, is_quote, is_retweet, favorite_count, retweet_count, status_url)
 
 # Adding raw extraction to timelines.df
 timelines.df <- timelines.df %>%
