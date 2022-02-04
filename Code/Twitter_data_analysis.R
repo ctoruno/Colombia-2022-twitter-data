@@ -1,0 +1,408 @@
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+## Script:            Political Observatory Colombia: Twitter data analysis
+##
+## Author:            Carlos A. Toruño Paniagua   (carlos.toruno@gmail.com)
+##                    David Granada Donato        (dagrado@gmail.com)
+##
+## Creation date:     January 28th, 2021
+##
+## This version:      February 2nd, 2022
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+## Outline:                                                                                                 ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Required packages
+lapply(list("rtweet", "haven", "qdap", "tm", "topicmodels", "syuzhet", "SnowballC", "wesanderson",
+            "plotly", "wordcloud2", "DT", "tidytext", "tidyverse", "magrittr"),
+       library, character.only = T)
+
+# Loading workspace
+load("./Data/twitter_data4dash.RData")
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                0.  Defining cleaning functions                                                           ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Defining extraction keywords
+keywords <- paste(candidates_query1, candidates_query2, 
+                  parties_query1, parties_query2, 
+                  sep = " ") %>%
+  str_replace_all(" OR ", "|")
+
+# Filtering function
+data4filtering <- function(panel, candidate, inputData){
+  
+  if (panel == "Social Monitoring"){
+    
+    # In order to filter the master data, we need [candidates.ls %>%  map_chr(2)], but we
+    # only have [candidates.ls %>%  map_chr(1)]. Therefore, we need to perform a match.
+    index <- match(paste0("@", candidate), candidates.ls %>%  map_chr(1))
+    selection <- paste0("filter_", candidates.ls[index] %>% map_chr(2))
+    
+    filteredData <- inputData %>%
+      filter(.data[[selection]] == 1)
+    
+  } else {
+    
+    filteredData <- inputData %>%
+      filter(screen_name == candidate & is_retweet == F)
+    
+  }  
+}
+
+# Tokenizing function for freq. Analysis
+data2tokens <- function(data) {
+  
+  # Tokenizing text and removing stop words
+  twitter_tokenized.df <- data %>%
+    mutate(text = str_replace_all(tolower(text), c("á" = "a", "é" = "e", "í" = "i",
+                                                   "ó" = "o", "ú|ü" = "u"))) %>%
+    select(1:5) %>%
+    mutate(tweet_id = row_number()) %>%
+    unnest_tokens(words, text, token = "tweets", strip_url = T) %>%
+    anti_join(data.frame(words = stopwords("es")) %>%
+                mutate(words = str_replace_all(words,
+                                               c("á" = "a", "é" = "e", "í" = "i", 
+                                                 "ó" = "o", "ú|ü" = "u"))))
+  
+  # Removing custom stop words
+  twitter_tokenized.df <- twitter_tokenized.df %>%      # we remove stopwords in the top-150
+    anti_join(tribble(~words, "ahora", "hacer", "hace", "puede", "mismo", "tan", "señor", "ud", 
+                      "siempre", "menos","dice", "debe", "ver", "hoy", "sabe", "van", "quiere", 
+                      "creo", "ustedes", "decir", "pues", "cabal", "vamos", "nunca", "claro", 
+                      "ahi", "jajaja", "jajajaja", "entonces", "gran", "vez", "da", "toda", 
+                      "d", "favor", "parte", "quieren", "cada","hizo", "hecho", "tener", "dijo", 
+                      "aqui", "cree", "tal", "parece", "hacen", "despues", "que", "usted", "solo", 
+                      "ser", "asi", "va", "años", "habla", "tipo", "misma", "cosas", "5", 
+                      "necesita", "alguien", "todas", "aun", "sino", "cosa", "x", "q", "pais", 
+                      "colombia", "|"))
+}
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                1.  Overview Panel Data Inputs                                                            ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+overview.ls <- list(
+  
+  "social_ntweets" = formatC(master_data.df %>% 
+                               summarise(count = n()) %>% 
+                               pull(count),
+                             format="f", big.mark = ",", digits=0),
+  "social_nusers"  = formatC(master_data.df %>% 
+                               distinct(screen_name) %>% 
+                               summarise(count = n()) %>% 
+                               pull(count),
+                             format="f", big.mark = ",", digits=0),
+  "social_tlapse"  = paste0(format(as.Date(master_data.df %>% 
+                                             slice_min(created_at, n = 1, with_ties = F) %>% 
+                                             pull(created_at)), "%b %dth,%Y"),
+                            " and ",
+                            format(as.Date(master_data.df %>% 
+                                             slice_max(created_at, n = 1, with_ties = F) %>% 
+                                             pull(created_at)), "%b %dth,%Y")),
+  "speech_ntweets" = formatC(timelines.df %>% summarise(count = n()) %>% pull(count), 
+                             format="f", big.mark = ",", digits=0),
+  "speech_tlapse"  = paste0(format(as.Date(timelines.df %>% 
+                                             filter(is_retweet == F) %>%
+                                             slice_min(created_at, n = 1, with_ties = F) %>% 
+                                             pull(created_at)), "%b %dth,%Y"),
+                            " and ",
+                            format(as.Date(timelines.df %>% 
+                                             filter(is_retweet == F) %>%
+                                             slice_max(created_at, n = 1, with_ties = F) %>% 
+                                             pull(created_at)), "%b %dth,%Y")),
+  "speech_retwts"  = formatC(timelines.df %>%
+                               filter(is_retweet == F) %>%
+                               summarise(total_retweets = sum(retweet_count)) %>% 
+                               pull(total_retweets), 
+                             format="f", big.mark = ",", digits=0),
+  "daily_log"      =  (master_data.df %>%
+                         select(created_at) %>% 
+                         mutate(date = as.Date(created_at, format="%Y-%m-%d %H:%M:%S")) %>% 
+                         group_by(day = cut(date, breaks = "day")) %>% 
+                         count(day) %>%
+                         mutate(date = as.Date(day)) %>%
+                         filter(date > as.Date("2021-11-22")) %>%
+                         ungroup())
+  
+)
+
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                2.  Frequency Analysis Data Inputs                                                        ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+# Obtaining word counts for freq. analysis
+word_counts.ls <- 
+  imap(list("Social Monitoring" = master_data.df,
+            "Speech Analysis"   = timelines.df), 
+         function(inputData, panel) {
+           
+           # Appplying the analysis to each candidate
+           lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
+                  function(candidate){
+                    
+                    # Applying filtering function
+                    filteredData <- data4filtering(panel = panel, 
+                                                   candidate = candidate,
+                                                   inputData = inputData)
+
+                     # Applying the tokenizing function and renaming variables
+                     tokens.df <- data2tokens(data = filteredData)
+                     
+                     
+                     # Creating raw word counts
+                     word_counts.df <- tokens.df %>% 
+                       count(words) %>% 
+                       arrange(desc(n)) %>%    
+                       filter(!(str_detect(words, regex(keywords, ignore_case = T))) & # Removing keywords
+                                !(str_detect(words, "^@"))) # Removing Twitter tags
+                     
+                     # Renaming variables to identify the candidate
+                     names(word_counts.df) <- c(paste0(candidate, "_words"),
+                                                paste0(candidate, "_count"))
+
+                     return(list(word_counts.df, tokens.df))
+
+                   })
+         })
+
+# Defining data inputs for freq. analysis
+freq_analysis.ls <- lapply(word_counts.ls, function(inputData) {
+  
+  nestedData <- map(inputData, 1)
+  
+  # Top words related to or used by each candidate
+  top_words.df <- map_dfc(nestedData, function(countsDATA){
+    selection <- names(countsDATA)[[2]]
+    countsDATA %>%
+      slice_max(.data[[selection]], n = 200, with_ties = F)
+  })
+  
+  # Top hashtags related to or used by each candidate
+  top_hashtags.df <- map_dfc(nestedData, function(countsDATA){
+    selection1 <- names(countsDATA)[[1]]
+    selection2 <- names(countsDATA)[[2]]
+    countsDATA %>%
+      filter(str_detect(.data[[selection1]], "^#")) %>%
+      slice_max(.data[[selection2]], n = 10, with_ties = F)
+  })
+  
+  # Return list
+  list("Top Words"    = top_words.df,
+       "Top Hashtags" = top_hashtags.df)
+  
+})
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                2.  Daily Activity Data Inputs                                                            ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Obtaining daily activity log
+daily_activity.ls <- 
+  imap(list("Social Monitoring" = master_data.df,
+            "Speech Analysis"   = timelines.df), 
+       function(inputData, panel) {
+         
+         # Appplying the analysis to each candidate
+         data1candidate.ls <- lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
+                                     function(candidate){
+                                       
+                                       # Creating a daily log
+                                       daily_log.df <- tibble(date = seq.Date(as.Date("2021-11-23"), 
+                                                                              max(batches.df$Date), 
+                                                                              1))
+                                       
+                                       # Applying filtering function
+                                       filteredData <- data4filtering(panel = panel, 
+                                                                      candidate = candidate,
+                                                                      inputData = inputData)
+                                       
+                                       # Collapsing data per day
+                                       added_info <- filteredData %>%
+                                         select(created_at) %>% 
+                                         mutate(date = as.Date(created_at, format="%Y-%m-%d %H:%M:%S")) %>% 
+                                         group_by(day = cut(date, breaks = "day")) %>% 
+                                         count(day) %>% 
+                                         mutate(date = as.Date(day)) %>%
+                                         rename(mentions = n) %>%
+                                         ungroup() %>%
+                                         select(date, mentions)
+                                       
+                                       # Joining info
+                                       daily_log.df <- daily_log.df %>%
+                                         left_join(added_info) %>%
+                                         mutate(mentions = if_else(is.na(mentions), 0, as.double(mentions)))
+                                       
+                                       # Renaming variables to identify the candidate
+                                       names(daily_log.df) <- c("date",
+                                                                paste0(candidate, "_tweets"))
+                                       
+                                       return(daily_log.df)
+                                       
+                                     })
+         
+         # Joining all data frames within list
+         purrr::reduce(data1candidate.ls, dplyr::left_join, by = "date")
+         
+       })
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                3.  User Info Data Input                                                                  ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+user_info.df <- users_data(lookup_users(candidates.ls %>% map_chr(1) %>% str_sub(2))) %>%
+  left_join(timelines.df %>%
+              group_by(screen_name) %>%
+              filter(is_retweet == F) %>%
+              count(screen_name) %>%
+              rename(tweets_count = n))
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                4.  Topic Modelling Data Input                                                            ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+tmodels.ls <- map(map(word_counts.ls[["Speech Analysis"]], 2),
+                  function(tokenized_data){
+                    
+                    # candidate <- as.character(tokenized_data[1, "screen_name"])
+                    
+                    # Casting a Document-Term Matrix
+                    DTMatrix <- tokenized_data %>% 
+                      count(tweet_id, words) %>% 
+                      filter(!str_detect(words, "^@")) %>%
+                      cast_dtm(document = tweet_id, term = words, value = n)
+                    
+                    # Fitting a LDA base model with only 2 topics
+                    LDAmodel_base <- LDA(x = DTMatrix, 
+                                         k = 4, 
+                                         method = "Gibbs",
+                                         control = list(
+                                           alpha = 0.5,
+                                           seed = 10005,
+                                           iter = 800))
+                    
+                    # Saving fit values for base model
+                    loglik_base <- logLik(LDAmodel_base)
+                    perxty_base <- perplexity(object = LDAmodel_base, 
+                                              newdata = DTMatrix)
+                    
+                    # # Best model
+                    # LDAmodel <- LDAmodel_base
+                    # 
+                    # for (ntopics in 3:5) {
+                    #   
+                    #   # Fitting a LDA model with specified parameters
+                    #   LDAmodel_prospect <- LDA(x = DTMatrix, 
+                    #                            k = ntopics, 
+                    #                            method = "Gibbs",
+                    #                            control = list(
+                    #                              alpha = 0.5,
+                    #                              seed = 10005,
+                    #                              iter = 500))
+                    #   
+                    #   # Saving fit values
+                    #   loglik_prospect <- logLik(LDAmodel_prospect)
+                    #   perxty_prospect <- perplexity(object = LDAmodel_prospect, 
+                    #                                 newdata = DTMatrix)
+                    #   
+                    #   # Evaluating if there is a better model
+                    #   if ((perxty_base-perxty_prospect) > 0) {
+                    #     LDAmodel <- LDAmodel
+                    #   } else {
+                    #     LDAmodel <- LDAmodel_prospect
+                    #   }
+                    # }
+                    
+                    TOP_words <- as.data.frame(terms(LDAmodel_base, k = 10))
+                    
+                  })
+
+names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                5.  Twitter Widgets Data Input                                                            ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+twitter_widgets_urls.ls <- 
+  imap(list("Social Monitoring" = master_data.df,
+            "Speech Analysis"   = timelines.df), 
+       function(inputData, panel) {
+         
+         # Applying the analysis to each candidate
+         url_top_tweets.ls <- 
+           lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
+                  function(candidate){
+                    
+                    # Applying filtering function
+                    filteredData <- data4filtering(panel = panel, 
+                                                   candidate = candidate,
+                                                   inputData = inputData)
+                    
+                    # Identifying most popular tweets
+                    statuses <- filteredData %>%
+                      slice_max(favorite_count, n = 3, with_ties = F) %>%
+                      select(status_id) %>%
+                      pull(status_id)
+                    
+                    # Getting URLs
+                    statuses <- lookup_statuses(statuses) %>% pull(status_url)
+                    status_url.df <- tibble(tweet = c("Top 1", "Top 2", "Top 3"),
+                                            url = statuses)
+                    
+                    # Renaming variables to identify the candidate
+                    names(status_url.df) <- c("tweet",
+                                              paste0(candidate, "_URLs"))
+                    
+                    return(status_url.df)
+                    
+                  })
+         
+         # Joining all data frames within list
+         purrr::reduce(url_top_tweets.ls, dplyr::left_join, by = "tweet")
+         
+       })
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                6.  Saving Data Input                                                                     ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+write_rds(overview.ls, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/overview.rds")
+write_rds(freq_analysis.ls, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/freq_analysis.rds")
+write_rds(daily_activity.ls, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/daily_activity.rds")
+write_rds(user_info.df, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/user_info.rds")
+write_rds(tmodels.ls, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/tmodels.rds")
+write_rds(twitter_widgets_urls.ls, 
+          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/twitter_widgets_urls.rds")

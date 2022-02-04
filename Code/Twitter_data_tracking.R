@@ -26,7 +26,7 @@
 lapply(list("rtweet", "glue", "dplyr", "purrr", "readr", "stringr", "magrittr"), 
        library, character.only = T)
 
-# Loading worspace
+# Loading workspace
 load("./Data/extraction_workspace.RData")
 
 # Successful loading?
@@ -52,16 +52,19 @@ if (success == FALSE){
   candidates_query1 <- paste("@petrogustavo OR @FranciaMarquezM OR @RoyBarreras OR @urianaguariyu",
                              "@velascoluisf OR @CamiloRomero OR @ingrodolfohdez OR @JERobledo",
                              "@CarlosAmayaR OR @sergio_fajardo OR @agaviriau OR @juanmanuelgalan",
+                             "@IBetancourtCol",
                              sep = " OR ")
   
   candidates_query2 <- paste("@CristoBustos OR @EnriquePenalosa OR @FicoGutierrez OR @JCecheverryCol",
                              "@AlejandroChar OR @DilianFrancisca OR @davidbarguil OR @JohnMiltonR_",
                              "@aydeelizarazoc OR @OIZuluaga OR @Luis_Perez_G OR @veranodelarosa",
+                             "@LuisGMurillo",
                              sep = " OR ")
   
   candidates.ls <- list( "Amaya, Carlos" = c("@CarlosAmayaR", "amaya"),
                          "Barguil, David" = c("@davidbarguil", "barguil"),
-                         "Barreras, Roy Leonardo" = c("@RoyBarreras", "roy"), 
+                         "Barreras, Roy Leonardo" = c("@RoyBarreras", "roy"),
+                         "Betancourt, Íngrid" = c("@IBetancourtCol", "betancourt"),
                          "Char, Alejandro" = c("@AlejandroChar", "char"),
                          "Cristo, Juan Fernando" = c("@CristoBustos", "cristo"),
                          "Echeverry, Juan Carlos" = c("@JCecheverryCol", "echeverry"),
@@ -72,6 +75,7 @@ if (success == FALSE){
                          "Hernández, Rodolfo" = c("@ingrodolfohdez", "hernandez"),
                          "Lizarazo, Aydeé" = c("@aydeelizarazoc", "lizarazo"),
                          "Márquez, Francia" = c("@FranciaMarquezM", "francia"),
+                         "Murillo, Luis Gilberto" = c("@LuisGMurillo", "murillo"),
                          "Peñalosa, Enrique" = c("@EnriquePenalosa", "penalosa"),
                          "Pérez, Luis"= c("@Luis_Perez_G", "perez"),
                          "Petro, Gustavo" = c("@petrogustavo", "petro"), 
@@ -307,4 +311,4 @@ write_as_csv(master_data.df,
 save.image(file = "./Data/extraction_workspace.RData")
 save(batches.df, candidates.ls, master_data.df, timelines.df,
      parties_query1, parties_query2, candidates_query1, candidates_query2,
-     file = "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/twitter_data4dash.RData")
+     file = "./Data/twitter_data4dash.RData")
