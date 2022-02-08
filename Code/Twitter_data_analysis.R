@@ -23,6 +23,9 @@ lapply(list("rtweet", "haven", "qdap", "tm", "topicmodels", "syuzhet", "Snowball
 # Loading workspace
 load("./Data/twitter_data4dash.RData")
 
+# Specifying dashboard directory to save data to
+dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
+
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -188,6 +191,17 @@ freq_analysis.ls <- lapply(word_counts.ls, function(inputData) {
   # Top words related to or used by each candidate
   top_words.df <- map_dfc(nestedData, function(countsDATA){
     selection <- names(countsDATA)[[2]]
+    
+    # Adding NAs to  data frames that has less than 200 words
+    nrows <- nrow(countsDATA)
+    if (nrows < 200){
+      added_rows <- tibble(x = rep_along(c(1:(200-nrows)), NA_character_),
+                           y = rep_along(c(1:(200-nrows)), NA_real_))
+      names(added_rows) <- names(countsDATA)
+      countsDATA <- countsDATA %>%
+        bind_rows(added_rows)
+    }
+    
     countsDATA %>%
       slice_max(.data[[selection]], n = 200, with_ties = F)
   })
@@ -196,8 +210,21 @@ freq_analysis.ls <- lapply(word_counts.ls, function(inputData) {
   top_hashtags.df <- map_dfc(nestedData, function(countsDATA){
     selection1 <- names(countsDATA)[[1]]
     selection2 <- names(countsDATA)[[2]]
+    
+    countsDATA <- countsDATA %>%
+      filter(str_detect(.data[[selection1]], "^#"))
+    
+    # Adding NAs to  data frames that has less than 10 hashtags
+    nrows <- nrow(countsDATA)
+    if (nrows < 10){
+      added_rows <- tibble(x = rep_along(c(1:(10-nrows)), NA_character_),
+                           y = rep_along(c(1:(10-nrows)), NA_real_))
+      names(added_rows) <- names(countsDATA)
+      countsDATA <- countsDATA %>%
+        bind_rows(added_rows)
+    }
+    
     countsDATA %>%
-      filter(str_detect(.data[[selection1]], "^#")) %>%
       slice_max(.data[[selection2]], n = 10, with_ties = F)
   })
   
@@ -368,16 +395,29 @@ twitter_widgets_urls.ls <-
                       slice_max(favorite_count, n = 3, with_ties = F) %>%
                       select(status_id) %>%
                       pull(status_id)
-                    
+
                     # Getting URLs
                     statuses <- lookup_statuses(statuses) %>% pull(status_url)
+                    
+                    # In case we have a deleted status
+                    nrows <- length(statuses)
+                    n <- 3
+                    while(nrows < 3){
+                      n <- n+1
+                      statuses <- filteredData %>%
+                        slice_max(favorite_count, n = n, with_ties = F) %>%
+                        select(status_id) %>%
+                        pull(status_id)
+                      statuses <- lookup_statuses(statuses) %>% pull(status_url)
+                      nrows <- length(statuses)
+                    }
                     status_url.df <- tibble(tweet = c("Top 1", "Top 2", "Top 3"),
                                             url = statuses)
-                    
+
                     # Renaming variables to identify the candidate
                     names(status_url.df) <- c("tweet",
                                               paste0(candidate, "_URLs"))
-                    
+
                     return(status_url.df)
                     
                   })
@@ -395,14 +435,14 @@ twitter_widgets_urls.ls <-
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 write_rds(overview.ls, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/overview.rds")
+          paste0(dash_directory, "overview.rds"))
 write_rds(freq_analysis.ls, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/freq_analysis.rds")
+          paste0(dash_directory, "freq_analysis.rds"))
 write_rds(daily_activity.ls, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/daily_activity.rds")
+          paste0(dash_directory, "daily_activity.rds"))
 write_rds(user_info.df, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/user_info.rds")
+          paste0(dash_directory, "user_info.rds"))
 write_rds(tmodels.ls, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/tmodels.rds")
+          paste0(dash_directory, "tmodels.rds"))
 write_rds(twitter_widgets_urls.ls, 
-          "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/twitter_widgets_urls.rds")
+          paste0(dash_directory, "twitter_widgets_urls.rds"))

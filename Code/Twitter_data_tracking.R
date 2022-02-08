@@ -224,8 +224,8 @@ print("Waiting 15 minutes for limit to reset...")
 Sys.sleep(900)
 raw_timelines.df <- map_dfr(list(candidates.ls[1:6] %>% map_chr(1),
                                  candidates.ls[7:12] %>% map_chr(1),
-                                 candidates.ls[13:18] %>% map_chr(1),
-                                 candidates.ls[19:24] %>% map_chr(1)),
+                                 candidates.ls[13:19] %>% map_chr(1),
+                                 candidates.ls[20:26] %>% map_chr(1)),
                             function(batch) {  # Search is splitted in 4 diff batches due to extraction limit
                               map_dfr(batch,
                                       function(candidate){
