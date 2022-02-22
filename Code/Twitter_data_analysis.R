@@ -302,7 +302,36 @@ user_info.df <- users_data(lookup_users(candidates.ls %>% map_chr(1) %>% str_sub
               group_by(screen_name) %>%
               filter(is_retweet == F) %>%
               count(screen_name) %>%
-              rename(tweets_count = n))
+              rename(tweets_count = n)) %>%
+  left_join(map_dfr(candidates.ls %>% map_chr(1) %>% str_sub(2),
+                    function(candidate){
+                      data1 <- data4filtering(panel = "Social Monitoring", 
+                                     candidate = candidate, 
+                                     inputData = master_data.df) %>%
+                        mutate(candidate_screen_name = candidate) %>% 
+                        group_by(candidate_screen_name) %>% 
+                        summarise(total_comm_tweets = n())
+                      
+                      data2 <- data4filtering(panel = "Social Monitoring", 
+                                              candidate = candidate, 
+                                              inputData = master_data.df) %>%
+                        mutate(candidate_screen_name = candidate) %>%
+                        group_by(candidate_screen_name) %>%
+                        count(screen_name) %>%
+                        summarise(total_users = n())
+                      
+                      left_join(data1, data2)
+                    }),
+            by = c("screen_name" = "candidate_screen_name")) %>%
+  left_join(daily_activity.ls$`Social Monitoring` %>% 
+              pivot_longer(!date, names_to = "user", 
+                           names_pattern = "(.*)_tweets", 
+                           values_to = "mentions") %>% 
+              group_by(user) %>% 
+              slice_max(mentions, n = 1, with_ties = F) %>%
+              rename(max_mentions_n = mentions,
+                     max_mentions_date = date),
+            by = c("screen_name" = "user"))
 
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

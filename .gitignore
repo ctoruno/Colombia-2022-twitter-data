@@ -47,3 +47,5 @@ Code/Learning to Shine.R
 Data/RawExtracts/_elections_tweets_col_20211206.csv
 Data/RawExtracts/_elections_tweets_col_20211207.csv
 *.csv
+Data/extraction_workspace.RData
+Data/twitter_data4dash.RData
