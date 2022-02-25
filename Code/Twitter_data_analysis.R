@@ -7,7 +7,7 @@
 ##
 ## Creation date:     January 28th, 2021
 ##
-## This version:      February 2nd, 2022
+## This version:      February 25nd, 2022
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -16,8 +16,8 @@
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Required packages
-lapply(list("rtweet", "haven", "qdap", "tm", "topicmodels", "syuzhet", "SnowballC", "wesanderson",
-            "plotly", "wordcloud2", "DT", "tidytext", "tidyverse", "magrittr"),
+lapply(list("rtweet", "haven", "tm", "topicmodels", "syuzhet", "SnowballC", "wesanderson",
+            "plotly", "wordcloud2", "DT", "tidytext", "tidyverse", "magrittr", "qdap"),
        library, character.only = T)
 
 # Loading workspace
