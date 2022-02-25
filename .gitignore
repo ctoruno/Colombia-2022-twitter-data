@@ -49,3 +49,5 @@ Data/RawExtracts/_elections_tweets_col_20211207.csv
 *.csv
 Data/extraction_workspace.RData
 Data/twitter_data4dash.RData
+Data/extraction_workspace.RData
+Data/twitter_data4dash.RData
