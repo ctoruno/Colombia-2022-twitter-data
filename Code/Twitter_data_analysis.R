@@ -42,7 +42,7 @@ keywords <- paste(candidates_query1, candidates_query2,
 # Filtering function
 data4filtering <- function(panel, candidate, inputData){
   
-  if (panel == "Social Monitoring"){
+  if (panel == "Social Monitoring"| panel=="Sentiment Trends"){
     
     # In order to filter the master data, we need [candidates.ls %>%  map_chr(2)], but we
     # only have [candidates.ls %>%  map_chr(1)]. Therefore, we need to perform a match.
@@ -400,7 +400,76 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                5.  Twitter Widgets Data Input                                                            ----
+##                5.  Sentiment trends data                                                          ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+sentiment.ls<-
+
+  imap(list("Social Monitoring" = master_data.df,
+            "Speech Analysis"   = timelines.df), 
+            "Sentiment Trends" = master_data.df,
+       function(inputData, panel) {
+         
+         # Appplying the analysis to each candidate
+         lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
+                function(candidate){
+                  
+                  # Applying filtering function
+                  filteredData <- data4filtering(panel = panel, 
+                                                 candidate = candidate,
+                                                 inputData = inputData)
+                  
+                  #Separate date variable
+                  filteredData<-filteredData%>%
+                    separate(created_at, into = c("Date", "Hour"), sep = " ") %>%
+                    separate(Date, into = c("Year", "Month", "Day"), sep = "-",
+                             remove = FALSE) %>%
+                    mutate(text = tolower(text)) 
+                  
+                  # Applying the tokenizing function and renaming variables
+                  tokens.df <- data2tokens(data = filteredData)
+                  
+                  
+                  
+                  #Create a variable candidate per twitt. Keep only tweets with one candidate named
+                  tokens.df<-tokens.df%>%
+                    mutate(candidate=ifelse(words %in% candidates_query,words,NA),
+                           candidate_num=ifelse(is.na(candidate),0,1))%>%
+                    arrange (tweet_id,candidate)%>%
+                    group_by(tweet_id)%>%
+                    mutate(candidate=first(candidate),
+                           candidate_num=sum(candidate_num,na.rm=T))%>%ungroup()%>%
+                    filter(candidate_num==1)
+                  
+                  #Sentiment using NRC dictionary for each sentiment
+                  
+                  nrc_sentiments<-get_sentiment_dictionary("nrc", language="spanish")%>%
+                    mutate(word = str_replace_all(word,
+                                                  c("á" = "a", "é" = "e", "í" = "i", 
+                                                    "ó" = "o", "ú|ü" = "u")))
+                  
+                  # Creating raw word counts
+                  word_counts.df <- tokens.df %>% 
+                    count(words) %>% 
+                    arrange(desc(n)) %>%    
+                    filter(!(str_detect(words, regex(keywords, ignore_case = T))) & # Removing keywords
+                             !(str_detect(words, "^@"))) # Removing Twitter tags
+                  
+                  # Renaming variables to identify the candidate
+                  names(word_counts.df) <- c(paste0(candidate, "_words"),
+                                             paste0(candidate, "_count"))
+                  
+                  return(list(word_counts.df, tokens.df))
+                  
+                })
+       })
+
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                6.  Twitter Widgets Data Input                                                            ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -459,7 +528,7 @@ twitter_widgets_urls.ls <-
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                6.  Saving Data Input                                                                     ----
+##                7.  Saving Data Input                                                                     ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
