@@ -24,8 +24,8 @@ lapply(list("rtweet", "haven", "tm", "topicmodels", "syuzhet", "SnowballC", "wes
 load("./Data/twitter_data4dash.RData")
 
 # Specifying dashboard directory to save data to
-dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
-
+#dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
+dash_directory <-"/Users/dagra/OneDrive/Documentos/GitHub/Colombia-2022-Dashboard/data"
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -67,7 +67,7 @@ data2tokens <- function(data) {
   twitter_tokenized.df <- data %>%
     mutate(text = str_replace_all(tolower(text), c("á" = "a", "é" = "e", "í" = "i",
                                                    "ó" = "o", "ú|ü" = "u"))) %>%
-    select(1:5) %>%
+    select(1:9) %>%
     mutate(tweet_id = row_number()) %>%
     unnest_tokens(words, text, token = "tweets", strip_url = T) %>%
     anti_join(data.frame(words = stopwords("es")) %>%
@@ -403,67 +403,74 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
 ##                5.  Sentiment trends data                                                          ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 
+# sentiment.ls<-
+# 
+#   imap(list("Social Monitoring" = master_data.df,
+#             "Speech Analysis"   = timelines.df), 
+#             "Sentiment Trends" = master_data.df,
+#        function(inputData, panel) {
+#          
+#          # Appplying the analysis to each candidate
+#          lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
+#                 function(candidate){
+#                   
+#                   # Applying filtering function
+#                   filteredData <- data4filtering(panel = panel, 
+#                                                  candidate = candidate,
+#                                                  inputData = inputData)
+                  
 
-sentiment.ls<-
+      
+      # Applying the tokenizing function and renaming variables
+      tokens.df <- data2tokens(data = master_data.df)
+      
+      #Candidate df
+      names_candidate<-names(candidates.ls)
+      candidate.df<-data.frame(matrix(unlist(candidates.ls), 
+                                      nrow=length(candidates.ls), byrow=TRUE))%>%
+        rename("twitter_candidate"="X1","nickname"="X2")%>%
+        mutate(twitter_candidate=tolower(twitter_candidate))%>%
+        cbind(names_candidate)
+      
+      #Create a variable candidate per twitt. Keep only tweets with one candidate named
+      
+      candidates_query<-c(candidates_query1,candidates_query2)
+      tokens.df<-tokens.df%>%
+        mutate(candidate=ifelse(words %in% candidates_query,words,NA),
+               candidate_num=ifelse(is.na(candidate),0,1))%>%
+        arrange (tweet_id,candidate)%>%
+        group_by(tweet_id)%>%
+        mutate(candidate=first(candidate),
+               candidate_num=sum(candidate_num,na.rm=T))%>%ungroup()%>%
+        filter(candidate_num==1)
+      
+      
+      
+      #Sentiment using NRC dictionary for each sentiment
+      
+      nrc_sentiments<-get_sentiment_dictionary("nrc", language="spanish")%>%
+        mutate(word = str_replace_all(word,
+                                      c("á" = "a", "é" = "e", "í" = "i", 
+                                        "ó" = "o", "ú|ü" = "u")))
+      
 
-  imap(list("Social Monitoring" = master_data.df,
-            "Speech Analysis"   = timelines.df), 
-            "Sentiment Trends" = master_data.df,
-       function(inputData, panel) {
-         
-         # Appplying the analysis to each candidate
-         lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
-                function(candidate){
-                  
-                  # Applying filtering function
-                  filteredData <- data4filtering(panel = panel, 
-                                                 candidate = candidate,
-                                                 inputData = inputData)
-                  
-                  #Separate date variable
-                  filteredData<-filteredData%>%
-                    separate(created_at, into = c("Date", "Hour"), sep = " ") %>%
-                    separate(Date, into = c("Year", "Month", "Day"), sep = "-",
-                             remove = FALSE) %>%
-                    mutate(text = tolower(text)) 
-                  
-                  # Applying the tokenizing function and renaming variables
-                  tokens.df <- data2tokens(data = filteredData)
-                  
-                  
-                  
-                  #Create a variable candidate per twitt. Keep only tweets with one candidate named
-                  tokens.df<-tokens.df%>%
-                    mutate(candidate=ifelse(words %in% candidates_query,words,NA),
-                           candidate_num=ifelse(is.na(candidate),0,1))%>%
-                    arrange (tweet_id,candidate)%>%
-                    group_by(tweet_id)%>%
-                    mutate(candidate=first(candidate),
-                           candidate_num=sum(candidate_num,na.rm=T))%>%ungroup()%>%
-                    filter(candidate_num==1)
-                  
-                  #Sentiment using NRC dictionary for each sentiment
-                  
-                  nrc_sentiments<-get_sentiment_dictionary("nrc", language="spanish")%>%
-                    mutate(word = str_replace_all(word,
-                                                  c("á" = "a", "é" = "e", "í" = "i", 
-                                                    "ó" = "o", "ú|ü" = "u")))
-                  
-                  # Creating raw word counts
-                  word_counts.df <- tokens.df %>% 
-                    count(words) %>% 
-                    arrange(desc(n)) %>%    
-                    filter(!(str_detect(words, regex(keywords, ignore_case = T))) & # Removing keywords
-                             !(str_detect(words, "^@"))) # Removing Twitter tags
-                  
-                  # Renaming variables to identify the candidate
-                  names(word_counts.df) <- c(paste0(candidate, "_words"),
-                                             paste0(candidate, "_count"))
-                  
-                  return(list(word_counts.df, tokens.df))
-                  
-                })
-       })
+      #Sentiment by candidate
+      sentiment.nrc.df<-tokens.df%>%
+        inner_join(nrc_sentiments, by = c("words"="word"))%>%
+        group_by(candidate,Date)%>%
+        
+        count(sentiment)%>%
+        group_by(candidate)%>%
+        mutate(nrow=sum(n,na.rm=T))%>%ungroup()%>%mutate(Date=as.Date(Date))%>%
+        left_join(candidate.df%>%select(twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate"))
+       #          
+       #            
+       #            return(list(sentiment.nrc.df))
+       #            
+       #          })
+       # })
 
 
 
