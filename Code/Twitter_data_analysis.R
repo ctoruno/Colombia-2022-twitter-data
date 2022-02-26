@@ -25,7 +25,7 @@ load("./Data/twitter_data4dash.RData")
 
 # Specifying dashboard directory to save data to
 #dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
-dash_directory <-"/Users/dagra/OneDrive/Documentos/GitHub/Colombia-2022-Dashboard/data"
+dash_directory <-"/Users/dagra/OneDrive/Documentos/GitHub/Colombia-2022-Dashboard/data/"
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -475,7 +475,7 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
         left_join(candidate.df%>%select(twitter_candidate,names_candidate), 
                   by=c("candidate"="twitter_candidate"))
 
-
+      sentiment.nrc.ls<-list(sentiment.nrc.df)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -554,3 +554,5 @@ write_rds(tmodels.ls,
           paste0(dash_directory, "tmodels.rds"))
 write_rds(twitter_widgets_urls.ls, 
           paste0(dash_directory, "twitter_widgets_urls.rds"))
+write_rds(sentiment.nrc.ls, 
+          paste0(dash_directory, "sentiment_nrc.rds"))
