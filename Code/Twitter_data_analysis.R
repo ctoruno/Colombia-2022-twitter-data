@@ -60,6 +60,8 @@ data4filtering <- function(panel, candidate, inputData){
   }  
 }
 
+
+
 # Tokenizing function for freq. Analysis
 data2tokens <- function(data) {
   
@@ -67,7 +69,7 @@ data2tokens <- function(data) {
   twitter_tokenized.df <- data %>%
     mutate(text = str_replace_all(tolower(text), c("á" = "a", "é" = "e", "í" = "i",
                                                    "ó" = "o", "ú|ü" = "u"))) %>%
-    select(1:9) %>%
+    select(1:5) %>%
     mutate(tweet_id = row_number()) %>%
     unnest_tokens(words, text, token = "tweets", strip_url = T) %>%
     anti_join(data.frame(words = stopwords("es")) %>%
@@ -423,7 +425,10 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
 
       
       # Applying the tokenizing function and renaming variables
-      tokens.df <- data2tokens(data = master_data.df)
+
+      tokens.df<-master_data.df%>%separate(created_at, into = c("Date", "Hour"), sep = " ")%>%
+       select(user_id,status_id,Date,screen_name,text )
+      tokens.df <- data2tokens(data = tokens.df)
       
       #Candidate df
       names_candidate<-names(candidates.ls)
@@ -433,12 +438,15 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
         mutate(twitter_candidate=tolower(twitter_candidate))%>%
         cbind(names_candidate)
       
-      #Create a variable candidate per twitt. Keep only tweets with one candidate named
+      #Create a variable candidate per tweet. Keep only tweets with one candidate named
       
       candidates_query<-c(candidates_query1,candidates_query2)
+      candidates_query<-candidates.ls %>%  map_chr(1)%>% str_sub(1)
+      
+      candidates_query<-tolower(candidates_query)
       tokens.df<-tokens.df%>%
         mutate(candidate=ifelse(words %in% candidates_query,words,NA),
-               candidate_num=ifelse(is.na(candidate),0,1))%>%
+               candidate_num=ifelse(is.na(candidate),0,1))       %>%
         arrange (tweet_id,candidate)%>%
         group_by(tweet_id)%>%
         mutate(candidate=first(candidate),
@@ -454,6 +462,7 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
                                       c("á" = "a", "é" = "e", "í" = "i", 
                                         "ó" = "o", "ú|ü" = "u")))
       
+  
 
       #Sentiment by candidate
       sentiment.nrc.df<-tokens.df%>%
@@ -465,12 +474,6 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
         mutate(nrow=sum(n,na.rm=T))%>%ungroup()%>%mutate(Date=as.Date(Date))%>%
         left_join(candidate.df%>%select(twitter_candidate,names_candidate), 
                   by=c("candidate"="twitter_candidate"))
-       #          
-       #            
-       #            return(list(sentiment.nrc.df))
-       #            
-       #          })
-       # })
 
 
 
