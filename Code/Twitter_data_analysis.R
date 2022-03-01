@@ -435,7 +435,7 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
       candidate.df<-data.frame(matrix(unlist(candidates.ls), 
                                       nrow=length(candidates.ls), byrow=TRUE))%>%
         rename("twitter_candidate"="X1","nickname"="X2")%>%
-        mutate(twitter_candidate=tolower(twitter_candidate))%>%
+        mutate(twitter_candidate1=tolower(twitter_candidate))%>%
         cbind(names_candidate)
       
       #Create a variable candidate per tweet. Keep only tweets with one candidate named
@@ -472,8 +472,9 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
         count(sentiment)%>%
         group_by(candidate)%>%
         mutate(nrow=sum(n,na.rm=T))%>%ungroup()%>%mutate(Date=as.Date(Date))%>%
-        left_join(candidate.df%>%select(twitter_candidate,names_candidate), 
-                  by=c("candidate"="twitter_candidate"))
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
 
       sentiment.nrc.ls<-list(sentiment.nrc.df)
 
