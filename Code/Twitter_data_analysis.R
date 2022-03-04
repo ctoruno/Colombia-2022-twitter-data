@@ -7,7 +7,7 @@
 ##
 ## Creation date:     January 28th, 2021
 ##
-## This version:      February 2nd, 2022
+## This version:      February 25nd, 2022
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -16,16 +16,16 @@
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Required packages
-lapply(list("rtweet", "haven", "qdap", "tm", "topicmodels", "syuzhet", "SnowballC", "wesanderson",
-            "plotly", "wordcloud2", "DT", "tidytext", "tidyverse", "magrittr"),
+lapply(list("rtweet", "haven", "tm", "topicmodels", "syuzhet", "SnowballC", "wesanderson",
+            "plotly", "wordcloud2", "DT", "tidytext", "tidyverse", "magrittr", "qdap"),
        library, character.only = T)
 
 # Loading workspace
 load("./Data/twitter_data4dash.RData")
 
 # Specifying dashboard directory to save data to
-dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
-
+#dash_directory <- "/Users/carlostorunopaniagua/Documents/GitHub/Colombia-2022-Dashboard/data/"
+dash_directory <-"/Users/dagra/OneDrive/Documentos/GitHub/Colombia-2022-Dashboard/data/"
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -42,7 +42,7 @@ keywords <- paste(candidates_query1, candidates_query2,
 # Filtering function
 data4filtering <- function(panel, candidate, inputData){
   
-  if (panel == "Social Monitoring"){
+  if (panel == "Social Monitoring"| panel=="Sentiment Trends"){
     
     # In order to filter the master data, we need [candidates.ls %>%  map_chr(2)], but we
     # only have [candidates.ls %>%  map_chr(1)]. Therefore, we need to perform a match.
@@ -59,6 +59,8 @@ data4filtering <- function(panel, candidate, inputData){
     
   }  
 }
+
+
 
 # Tokenizing function for freq. Analysis
 data2tokens <- function(data) {
@@ -400,7 +402,110 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                5.  Twitter Widgets Data Input                                                            ----
+##                5.  Sentiment trends data                                                          ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 
+
+      
+      # Applying the tokenizing function and renaming variables
+
+      tokens.df<-master_data.df%>%separate(created_at, into = c("Date", "Hour"), sep = " ")%>%
+       select(user_id,status_id,Date,screen_name,text )
+      tokens.df <- data2tokens(data = tokens.df)
+      
+      #Candidate df
+      names_candidate<-names(candidates.ls)
+      candidate.df<-data.frame(matrix(unlist(candidates.ls), 
+                                      nrow=length(candidates.ls), byrow=TRUE))%>%
+        rename("twitter_candidate"="X1","nickname"="X2")%>%
+        mutate(twitter_candidate1=tolower(twitter_candidate))%>%
+        cbind(names_candidate)
+      
+      #Create a variable candidate per tweet. Keep only tweets with one candidate named
+      
+      candidates_query<-c(candidates_query1,candidates_query2)
+      candidates_query<-candidates.ls %>%  map_chr(1)%>% str_sub(1)
+      
+      candidates_query<-tolower(candidates_query)
+      tokens.df<-tokens.df%>%
+        mutate(candidate=ifelse(words %in% candidates_query,words,NA),
+               candidate_num=ifelse(is.na(candidate),0,1))       %>%
+        arrange (tweet_id,candidate)%>%
+        group_by(tweet_id)%>%
+        mutate(candidate=first(candidate),
+               candidate_num=sum(candidate_num,na.rm=T))%>%ungroup()%>%
+        filter(candidate_num==1)
+      
+      
+      
+        #Sentiment using NRC dictionary for each sentiment
+      
+      nrc_sentiments<-get_sentiment_dictionary("nrc", language="spanish")%>%
+        mutate(word = str_replace_all(word,
+                                      c("á" = "a", "é" = "e", "í" = "i", 
+                                        "ó" = "o", "ú|ü" = "u")))
+      
+  
+
+      #Sentiment by candidate
+      sentiment.nrc.df<-tokens.df%>%
+        inner_join(nrc_sentiments, by = c("words"="word"))%>%
+        group_by(candidate,Date)%>%
+        
+        count(sentiment)%>%
+        group_by(candidate)%>%
+        mutate(nrow=sum(n,na.rm=T))%>%ungroup()%>%mutate(Date=as.Date(Date))%>%
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
+      
+      
+      
+  #***** Sentiment time analysis
+      download.file("https://raw.githubusercontent.com/jboscomendoza/rpubs/master/sentimientos_afinn/lexico_afinn.en.es.csv",
+                    "lexico_afinn.en.es.csv")
+      
+      afinn <- read.csv("lexico_afinn.en.es.csv", stringsAsFactors = F, fileEncoding = "latin1") %>% 
+        tbl_df()%>% rename(word=Palabra, value=Puntuacion)%>%
+        mutate(word = str_replace_all(word,
+                                      c("á" = "a", "é" = "e", "í" = "i", 
+                                        "ó" = "o", "ú|ü" = "u")))
+      
+      #Join Afinn dictionary
+      
+      tweets_afinn<-tokens.df%>%
+        inner_join(afinn, by = c("words"="word")) %>%
+        mutate(sentiment = ifelse(value > 0, "Positive", "Negative")) 
+      
+      #Sentiment db by candidate and date
+      
+      sentiment_date<-tweets_afinn%>%
+        group_by(Date,candidate)%>%
+        count(sentiment)%>%
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
+      
+      
+#***** Choose followers and detractors
+      follower_detractor<-tweets_afinn%>%
+        inner_join(nrc_sentiments%>%rename(feeling=sentiment)%>%
+                     select(feeling,word), by = c("words"="word"))%>%
+        group_by(user_id)%>%
+        mutate(avg_sentiment=mean(value,na.rm=T))%>%
+        ungroup()%>%mutate(follower=ifelse(avg_sentiment>0,"Follower","Detractor"))%>%
+        group_by(candidate,follower,Date)%>%
+        count(feeling)%>%
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
+
+      sentiment.df.ls<-list(sentiment.nrc.df,sentiment_date,follower_detractor)
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                6.  Twitter Widgets Data Input                                                            ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -459,7 +564,7 @@ twitter_widgets_urls.ls <-
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                6.  Saving Data Input                                                                     ----
+##                7.  Saving Data Input                                                                     ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -475,3 +580,5 @@ write_rds(tmodels.ls,
           paste0(dash_directory, "tmodels.rds"))
 write_rds(twitter_widgets_urls.ls, 
           paste0(dash_directory, "twitter_widgets_urls.rds"))
+write_rds(sentiment.df.ls, 
+          paste0(dash_directory, "sentiment_nrc.rds"))
