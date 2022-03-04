@@ -406,22 +406,6 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 
-# sentiment.ls<-
-# 
-#   imap(list("Social Monitoring" = master_data.df,
-#             "Speech Analysis"   = timelines.df), 
-#             "Sentiment Trends" = master_data.df,
-#        function(inputData, panel) {
-#          
-#          # Appplying the analysis to each candidate
-#          lapply(candidates.ls %>% map_chr(1) %>% str_sub(2),
-#                 function(candidate){
-#                   
-#                   # Applying filtering function
-#                   filteredData <- data4filtering(panel = panel, 
-#                                                  candidate = candidate,
-#                                                  inputData = inputData)
-                  
 
       
       # Applying the tokenizing function and renaming variables
@@ -455,7 +439,7 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
       
       
       
-      #Sentiment using NRC dictionary for each sentiment
+        #Sentiment using NRC dictionary for each sentiment
       
       nrc_sentiments<-get_sentiment_dictionary("nrc", language="spanish")%>%
         mutate(word = str_replace_all(word,
@@ -475,8 +459,49 @@ names(tmodels.ls) <- candidates.ls %>% map_chr(1) %>% str_sub(2)
         left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
                   by=c("candidate"="twitter_candidate1"))%>%
         mutate(candidate=twitter_candidate)
+      
+      
+      
+  #***** Sentiment time analysis
+      download.file("https://raw.githubusercontent.com/jboscomendoza/rpubs/master/sentimientos_afinn/lexico_afinn.en.es.csv",
+                    "lexico_afinn.en.es.csv")
+      
+      afinn <- read.csv("lexico_afinn.en.es.csv", stringsAsFactors = F, fileEncoding = "latin1") %>% 
+        tbl_df()%>% rename(word=Palabra, value=Puntuacion)%>%
+        mutate(word = str_replace_all(word,
+                                      c("á" = "a", "é" = "e", "í" = "i", 
+                                        "ó" = "o", "ú|ü" = "u")))
+      
+      #Join Afinn dictionary
+      
+      tweets_afinn<-tokens.df%>%
+        inner_join(afinn, by = c("words"="word")) %>%
+        mutate(sentiment = ifelse(value > 0, "Positive", "Negative")) 
+      
+      #Sentiment db by candidate and date
+      
+      sentiment_date<-tweets_afinn%>%
+        group_by(Date,candidate)%>%
+        count(sentiment)%>%
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
+      
+      
+#***** Choose followers and detractors
+      follower_detractor<-tweets_afinn%>%
+        inner_join(nrc_sentiments%>%rename(feeling=sentiment)%>%
+                     select(feeling,word), by = c("words"="word"))%>%
+        group_by(user_id)%>%
+        mutate(avg_sentiment=mean(value,na.rm=T))%>%
+        ungroup()%>%mutate(follower=ifelse(avg_sentiment>0,"Follower","Detractor"))%>%
+        group_by(candidate,follower,Date)%>%
+        count(feeling)%>%
+        left_join(candidate.df%>%select(twitter_candidate1,twitter_candidate,names_candidate), 
+                  by=c("candidate"="twitter_candidate1"))%>%
+        mutate(candidate=twitter_candidate)
 
-      sentiment.nrc.ls<-list(sentiment.nrc.df)
+      sentiment.df.ls<-list(sentiment.nrc.df,sentiment_date,follower_detractor)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -555,5 +580,5 @@ write_rds(tmodels.ls,
           paste0(dash_directory, "tmodels.rds"))
 write_rds(twitter_widgets_urls.ls, 
           paste0(dash_directory, "twitter_widgets_urls.rds"))
-write_rds(sentiment.nrc.ls, 
+write_rds(sentiment.df.ls, 
           paste0(dash_directory, "sentiment_nrc.rds"))
